@@ -30,6 +30,18 @@ Guest Satisfaction - Reviews and ratings
 You are a data engineer. The data in the json contains 100 web scraped airbnb lisitngs from the Beltline, Calgary, Canada neighborhood.  First analyse the data to understand its structure, identifying the entities and relationships, then normalize into a PostgreSQL relational database. Think step by step.
 
 - Need to add to this prompt the specific of VARCHAR to text.
+Listings table (normalized)
+    split location into city, province, country. Need to update schema
+    Remove:
+    total_price
+
+    Rename
+    price to price_per_night
+
+listings_reviews table (normalized)
+    Remove:
+    guest_location
+
 
 Amenities had problems with VARCHAR length (truncated to 255 characters in ETL script) so we used TEXT instead because PostgreSQL treats them the same way with no performance difference. Updated all VARCHAR types to TEXT throughout the entire normalization schema for consistency and to eliminate any potential truncation issues.
 
@@ -134,7 +146,44 @@ response = requests.post(url, headers=headers, params=params, json=data)
 print(response.json())
 
 
+# Prompt: Creating dimensional model tables in Postgres (Took Screenshot)
+#sequentialthinking 
+You are a data engineer and a data scientist. The end objective is to create a competitor algorithm that selects the top 25 competitors based on a particular listing. Based on the top 25 competitors an optimal price for the particular listing needs to be calculated.
 
+The task is to propose a relational dimensional database model with dimension and fact tables from the normalized database that includes aggregations or calculated columns that can be used for the end objective.
+
+Based on research, these are important variables when a user selects a property (for competitor algorithm)
+
+hosts table
+
+rating
+number_of_reviews
+response_rate
+years_hosting
+is_superhost
+
+listings table
+
+price_per_night
+rating
+number_of_reviews
+guests
+bedrooms
+beds
+baths
+pets_allowed
+is_guest_favorite
+
+listing_category_ratings table
+
+cleanliness
+accuracy
+check-in
+communication
+location
+value
+
+think step by step
 
 # Notes
 
