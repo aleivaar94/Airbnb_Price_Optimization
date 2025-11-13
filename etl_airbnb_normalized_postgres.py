@@ -254,6 +254,18 @@ class AirbnbETL:
                 elif 'bath' in detail.lower():
                     baths = int(detail.split()[0]) if detail.split()[0].isdigit() else None
             
+            # Parse location into city, province, country
+            city = province = country = None
+            location = listing.get('location', '')
+            if location:
+                location_parts = [part.strip() for part in location.split(',')]
+                if len(location_parts) == 3:
+                    city, province, country = location_parts
+                elif len(location_parts) == 2:
+                    city, country = location_parts
+                elif len(location_parts) == 1:
+                    city = location_parts[0]
+            
             # Parse timestamp
             timestamp = None
             if listing.get('timestamp'):
@@ -265,16 +277,16 @@ class AirbnbETL:
             insert_query = """
                 INSERT INTO listings (
                     property_id, host_id, name, listing_title, listing_name,
-                    url, category, description, location, latitude, longitude,
-                    price, currency, total_price, rating, number_of_reviews,
-                    guests, bedrooms, beds, baths, pets_allowed, availability,
-                    is_guest_favorite, timestamp
+                    url, category, description, city, province, country, 
+                    latitude, longitude, price_per_night, currency, 
+                    rating, number_of_reviews, guests, bedrooms, beds, baths, 
+                    pets_allowed, availability, is_guest_favorite, timestamp
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )
                 ON CONFLICT (property_id) DO UPDATE SET
-                    price = EXCLUDED.price,
+                    price_per_night = EXCLUDED.price_per_night,
                     rating = EXCLUDED.rating,
                     number_of_reviews = EXCLUDED.number_of_reviews,
                     availability = EXCLUDED.availability,
@@ -294,12 +306,13 @@ class AirbnbETL:
                 listing.get('url'),
                 listing.get('category'),
                 listing.get('description'),
-                listing.get('location'),
+                city,
+                province,
+                country,
                 listing.get('lat'),
                 listing.get('long'),
                 listing.get('price'),
                 listing.get('currency', 'CAD'),
-                listing.get('total_price'),
                 listing.get('ratings'),
                 listing.get('property_number_of_reviews', 0),
                 listing.get('guests'),
@@ -475,14 +488,13 @@ class AirbnbETL:
                 self.cursor.execute(
                     """
                     INSERT INTO listing_reviews (
-                        listing_id, guest_name, guest_location, guest_time_on_airbnb,
+                        listing_id, guest_name, guest_time_on_airbnb,
                         review_text, review_date, rating, stayed_for, host_response
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         listing_id,
                         review.get('guest_name'),
-                        review.get('guest_location'),
                         review.get('guest_time_on_airbnb'),
                         review.get('review'),
                         review_date,
