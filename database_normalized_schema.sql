@@ -55,12 +55,13 @@ CREATE TABLE listings (
     url TEXT,
     category TEXT,
     description TEXT,
-    location TEXT,
+    city TEXT,
+    province TEXT,
+    country TEXT,
     latitude DECIMAL(10, 7),
     longitude DECIMAL(10, 7),
-    price DECIMAL(10, 2),
+    price_per_night DECIMAL(10, 2),
     currency TEXT DEFAULT 'CAD',
-    total_price DECIMAL(10, 2),
     rating DECIMAL(3, 2),
     number_of_reviews INTEGER DEFAULT 0,
     guests INTEGER,
@@ -151,7 +152,6 @@ CREATE TABLE listing_reviews (
     review_id SERIAL PRIMARY KEY,
     listing_id INTEGER REFERENCES listings(listing_id) ON DELETE CASCADE,
     guest_name TEXT,
-    guest_location TEXT,
     guest_time_on_airbnb TEXT,
     review_text TEXT NOT NULL,
     review_date TIMESTAMP,
@@ -199,8 +199,10 @@ CREATE INDEX idx_hosts_superhost ON hosts(is_superhost);
 
 -- Listings indexes
 CREATE INDEX idx_listings_host ON listings(host_id);
-CREATE INDEX idx_listings_location ON listings(location);
-CREATE INDEX idx_listings_price ON listings(price);
+CREATE INDEX idx_listings_city ON listings(city);
+CREATE INDEX idx_listings_province ON listings(province);
+CREATE INDEX idx_listings_country ON listings(country);
+CREATE INDEX idx_listings_price ON listings(price_per_night);
 CREATE INDEX idx_listings_rating ON listings(rating);
 CREATE INDEX idx_listings_guests ON listings(guests);
 CREATE INDEX idx_listings_availability ON listings(availability);
