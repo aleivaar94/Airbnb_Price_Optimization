@@ -327,9 +327,9 @@ def fetch_airbnb_listings_by_location(
     location: str, 
     limit_per_input: int = 100,
     api_key: Optional[str] = None,
-    max_retries: int = 120, 
+    max_retries: int = 240, 
     wait_time: int = 30
-) -> Tuple[List[Dict], pd.DataFrame]:
+) -> Tuple[str, List[Dict], pd.DataFrame]:
     """
     Orchestrates the full Airbnb listings scraping process by location using Bright Data API.
     
@@ -345,14 +345,15 @@ def fetch_airbnb_listings_by_location(
     api_key : str, optional
         BrightData API key. If not provided, will use BRIGHTDATA_API_KEY from .env file.
     max_retries : int, optional
-        Maximum retries for snapshot polling (default: 120, allows for 60 minutes with 30s intervals).
+        Maximum retries for snapshot polling (default: 240, allows for 2 hours with 30s intervals).
     wait_time : int, optional
         Wait time in seconds between retries (default: 30).
     
     Returns
     -------
-    Tuple[List[Dict], pd.DataFrame]
+    Tuple[str, List[Dict], pd.DataFrame]
         A tuple containing:
+        - Snapshot ID (str)
         - List of dictionaries with all listing data
         - DataFrame with all listings (one row per listing)
     
@@ -366,11 +367,11 @@ def fetch_airbnb_listings_by_location(
     Examples
     --------
     >>> # Using API key from .env file
-    >>> listings_data, listings_df = fetch_airbnb_listings_by_location("Beltline, Calgary", limit_per_input=50)
+    >>> snapshot_id, listings_data, listings_df = fetch_airbnb_listings_by_location("Beltline, Calgary", limit_per_input=50)
     >>> print(f"Found {len(listings_df)} listings")
     
     >>> # Using explicit API key
-    >>> listings_data, listings_df = fetch_airbnb_listings_by_location(
+    >>> snapshot_id, listings_data, listings_df = fetch_airbnb_listings_by_location(
     ...     location="Downtown Vancouver", 
     ...     limit_per_input=100,
     ...     api_key="your-api-key-here"
@@ -411,16 +412,16 @@ def fetch_airbnb_listings_by_location(
     print(f"Total listings retrieved: {len(listings_data)}")
     print(f"Snapshot ID: {snapshot_id}")
     
-    return listings_data, listings_df
+    return snapshot_id, listings_data, listings_df
 
 # %%
 def fetch_airbnb_listings_by_url(
     url: str,
     api_key: Optional[str] = None,
     country: str = "CA",
-    max_retries: int = 10, 
+    max_retries: int = 60, 
     wait_time: int = 30
-) -> Tuple[List[Dict], pd.DataFrame]:
+) -> Tuple[str, List[Dict], pd.DataFrame]:
     """
     Orchestrates the full Airbnb listing scraping process by URL using Bright Data API.
     
@@ -436,14 +437,15 @@ def fetch_airbnb_listings_by_url(
     country : str, optional
         Country code (default: "CA").
     max_retries : int, optional
-        Maximum retries for snapshot polling (default: 10, allows for 5 minutes with 30s intervals).
+        Maximum retries for snapshot polling (default: 60, allows for 30 minutes with 30s intervals).
     wait_time : int, optional
         Wait time in seconds between retries (default: 30).
     
     Returns
     -------
-    Tuple[List[Dict], pd.DataFrame]
+    Tuple[str, List[Dict], pd.DataFrame]
         A tuple containing:
+        - Snapshot ID (str)
         - List of dictionaries with listing data
         - DataFrame with the listing (typically one row)
     
@@ -457,11 +459,11 @@ def fetch_airbnb_listings_by_url(
     Examples
     --------
     >>> # Using API key from .env file
-    >>> listing_data, listing_df = fetch_airbnb_listings_by_url("https://www.airbnb.ca/rooms/1300059188064308611")
+    >>> snapshot_id, listing_data, listing_df = fetch_airbnb_listings_by_url("https://www.airbnb.ca/rooms/1300059188064308611")
     >>> print(f"Found {len(listing_df)} listing(s)")
     
     >>> # Using explicit API key
-    >>> listing_data, listing_df = fetch_airbnb_listings_by_url(
+    >>> snapshot_id, listing_data, listing_df = fetch_airbnb_listings_by_url(
     ...     url="https://www.airbnb.ca/rooms/1300059188064308611",
     ...     api_key="your-api-key-here",
     ...     country="CA"
@@ -502,5 +504,87 @@ def fetch_airbnb_listings_by_url(
     print(f"Total listings retrieved: {len(listings_data)}")
     print(f"Snapshot ID: {snapshot_id}")
     
-    return listings_data, listings_df
+    return snapshot_id, listings_data, listings_df
+
+
+# %%
+if __name__ == "__main__":
+    """
+    Main execution block for standalone usage.
+    
+    Modify the configuration variables below to fetch Airbnb listings and 
+    automatically save them to JSON and Excel files in the Resources folder.
+    """
+    
+    # ========================================
+    # CONFIGURATION - Modify as needed
+    # ========================================
+    
+    # Choose mode: "location" or "url"
+    MODE = "location"  # Change to "url" for URL-based fetching
+    
+    # For location-based fetching
+    LOCATION = "Beltline, Calgary"
+    LIMIT_PER_INPUT = 100
+    
+    # For URL-based fetching
+    LISTING_URL = "https://www.airbnb.ca/rooms/1300059188064308611"
+    COUNTRY = "CA"
+    
+    # ========================================
+    # EXECUTION
+    # ========================================
+    
+    try:
+        if MODE.lower() == "location":
+            # Fetch listings by location
+            snapshot_id, listings_data, listings_df = fetch_airbnb_listings_by_location(
+                location=LOCATION,
+                limit_per_input=LIMIT_PER_INPUT
+            )
+        elif MODE.lower() == "url":
+            # Fetch listing by URL
+            snapshot_id, listings_data, listings_df = fetch_airbnb_listings_by_url(
+                url=LISTING_URL,
+                country=COUNTRY
+            )
+        else:
+            raise ValueError(f"Invalid MODE: {MODE}. Must be 'location' or 'url'")
+        
+        # ========================================
+        # SAVE TO FILES
+        # ========================================
+        
+        print("\n" + "=" * 80)
+        print("Step 4: Saving data to files...")
+        print("=" * 80)
+        
+        # Create Resources folder if it doesn't exist
+        os.makedirs("Resources", exist_ok=True)
+        
+        # Define file paths with snapshot ID
+        json_filepath = f"Resources/airbnb_listing_s_{snapshot_id}.json"
+        excel_filepath = f"Resources/airbnb_listing_s_{snapshot_id}.xlsx"
+        
+        # Save to JSON
+        with open(json_filepath, "w") as json_file:
+            json.dump(listings_data, json_file, indent=2)
+        print(f"✓ JSON saved: {json_filepath}")
+        
+        # Save to Excel
+        listings_df.to_excel(excel_filepath, index=False)
+        print(f"✓ Excel saved: {excel_filepath}")
+        
+        print("\n" + "=" * 80)
+        print("✅ Script completed successfully!")
+        print(f"Total listings: {len(listings_data)}")
+        print(f"Snapshot ID: {snapshot_id}")
+        print(f"Files saved:")
+        print(f"  - {json_filepath}")
+        print(f"  - {excel_filepath}")
+        print("=" * 80)
+        
+    except Exception as e:
+        print(f"\n❌ Error occurred: {e}")
+        raise
 
