@@ -66,6 +66,13 @@ This dimensional model transforms the normalized Airbnb database into a star sch
 **Key Columns**:
 - `host_key` (PK): Surrogate key
 - `host_id`: Business key from source system
+- `host_name`: Host display name
+- `host_response_rate`: Response rate percentage
+- `host_response_time`: Response time description (e.g., "within an hour")
+- `languages`: Languages spoken by host
+- `my_work`: Host's work description
+- `image_url`: Host profile image URL
+- `profile_url`: Host profile URL on Airbnb
 - `host_tier`: **CALCULATED** - Elite/Premium/Standard based on superhost status and rating
 - `experience_level`: **CALCULATED** - Expert/Experienced/New based on years_hosting
 
@@ -89,6 +96,13 @@ experience_level =
 
 **Key Columns**:
 - `property_key` (PK): Surrogate key
+- `property_id`: Business key from source system
+- `name`: Property name from listings
+- `listing_name`: Formatted listing name
+- `listing_title`: Property listing title
+- `url`: Direct URL to Airbnb listing
+- `description`: Full property description text
+- `category`: Property category (e.g., "Entire home", "Private room")
 - `property_size_tier`: **CALCULATED** - Studio/Small/Medium/Large
 - `guest_per_bedroom_ratio`: **CALCULATED** - Space efficiency (guests/bedrooms)
 - `bath_to_bedroom_ratio`: **CALCULATED** - Luxury indicator (baths/bedrooms)
@@ -186,7 +200,7 @@ SELECT populate_dim_date('2024-01-01'::DATE, '2026-12-31'::DATE);
 **Grain**: One row per listing per snapshot date
 
 **Key Measures**:
-- Base: `price_per_night`, `listing_rating`, `number_of_reviews`
+- Base: `price_per_night`, `currency`, `listing_rating`, `number_of_reviews`
 - **CALCULATED**:
   - `price_per_guest` = price_per_night / guests_capacity
   - `price_per_bedroom` = price_per_night / bedrooms
@@ -195,6 +209,11 @@ SELECT populate_dim_date('2024-01-01'::DATE, '2026-12-31'::DATE);
   - `competitiveness_score` = f(rating, reviews, host_quality, amenities) [0-100]
   - `value_score` = quality_metrics / normalized_price [0-100]
   - `popularity_index` = (number_of_reviews × rating) / segment_average
+
+**Metadata Columns**:
+- `data_scraped_at`: Timestamp when the listing data was originally scraped from Airbnb
+- `snapshot_date`: Date of this snapshot for time-series analysis
+- `currency`: Price currency (default: 'CAD')
 
 **Example Competitiveness Score Calculation**:
 ```python

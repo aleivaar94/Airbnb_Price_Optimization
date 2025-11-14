@@ -77,7 +77,12 @@ CREATE TABLE dim_host (
     host_rating DECIMAL(3, 2),
     host_number_of_reviews INTEGER DEFAULT 0,
     host_response_rate INTEGER,
+    host_response_time TEXT,
     host_years_hosting INTEGER,
+    languages TEXT,
+    my_work TEXT,
+    image_url TEXT,
+    profile_url TEXT,
     is_superhost BOOLEAN DEFAULT FALSE,
     
     -- Calculated columns (populated during ETL)
@@ -99,9 +104,12 @@ COMMENT ON COLUMN dim_host.experience_level IS 'CALCULATED: Expert (years>5), Ex
 CREATE TABLE dim_property (
     property_key SERIAL PRIMARY KEY,
     property_id TEXT UNIQUE NOT NULL,
+    name TEXT,
     listing_name TEXT,
     listing_title TEXT,
     category TEXT,
+    url TEXT,
+    description TEXT,
     guests_capacity INTEGER,
     bedrooms INTEGER,
     beds INTEGER,
@@ -221,6 +229,7 @@ CREATE TABLE fact_listing_metrics (
     
     -- Base measures
     price_per_night DECIMAL(10, 2),
+    currency TEXT,
     listing_rating DECIMAL(3, 2),
     number_of_reviews INTEGER DEFAULT 0,
     is_available BOOLEAN DEFAULT TRUE,
@@ -235,6 +244,7 @@ CREATE TABLE fact_listing_metrics (
     popularity_index DECIMAL(6, 2),  -- (reviews × rating) / segment_average
     
     -- Metadata
+    data_scraped_at TIMESTAMP,
     snapshot_date DATE DEFAULT CURRENT_DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -435,9 +445,12 @@ SELECT
     f.property_id,
     
     -- Property details
+    p.name,
     p.listing_name,
     p.listing_title,
     p.category,
+    p.url,
+    p.description,
     p.guests_capacity,
     p.bedrooms,
     p.beds,
@@ -459,6 +472,9 @@ SELECT
     h.host_id,
     h.host_name,
     h.host_rating,
+    h.host_response_rate,
+    h.host_response_time,
+    h.languages,
     h.is_superhost,
     h.host_tier,
     h.experience_level,
@@ -473,6 +489,7 @@ SELECT
     
     -- Pricing and metrics
     f.price_per_night,
+    f.currency,
     f.listing_rating,
     f.number_of_reviews,
     f.price_per_guest,
@@ -487,6 +504,7 @@ SELECT
     a.amenity_score,
     
     -- Metadata
+    f.data_scraped_at,
     f.snapshot_date,
     f.is_available
     

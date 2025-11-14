@@ -348,7 +348,8 @@ class DimensionalETL:
         insert_query = """
             INSERT INTO dim_host (
                 host_id, host_name, host_rating, host_number_of_reviews,
-                host_response_rate, host_years_hosting, is_superhost,
+                host_response_rate, host_response_time, host_years_hosting,
+                languages, my_work, image_url, profile_url, is_superhost,
                 host_tier, experience_level
             ) VALUES %s
             ON CONFLICT (host_id) DO UPDATE SET
@@ -369,7 +370,8 @@ class DimensionalETL:
             
             values.append((
                 host_id, name, rating, reviews, response_rate,
-                years, is_super, host_tier, experience
+                response_time, years, languages, work, image, url,
+                is_super, host_tier, experience
             ))
         
         execute_values(self.target_cursor, insert_query, values)
@@ -396,6 +398,7 @@ class DimensionalETL:
         self.source_cursor.execute("""
             SELECT 
                 property_id, name, listing_title, listing_name, category,
+                url, description,
                 guests, bedrooms, beds, baths, pets_allowed, is_guest_favorite
             FROM listings
         """)
@@ -406,7 +409,8 @@ class DimensionalETL:
         # Transform and load
         insert_query = """
             INSERT INTO dim_property (
-                property_id, listing_name, listing_title, category,
+                property_id, name, listing_name, listing_title, category,
+                url, description,
                 guests_capacity, bedrooms, beds, baths, pets_allowed,
                 is_guest_favorite, property_size_tier,
                 guest_per_bedroom_ratio, bath_to_bedroom_ratio
@@ -419,8 +423,8 @@ class DimensionalETL:
         
         values = []
         for prop in properties:
-            prop_id, name, title, listing_name, category, guests, \
-            bedrooms, beds, baths, pets, is_fav = prop
+            prop_id, name, title, listing_name, category, url, description, \
+            guests, bedrooms, beds, baths, pets, is_fav = prop
             
             size_tier = self.classify_property_size_tier(bedrooms)
             
@@ -429,7 +433,8 @@ class DimensionalETL:
             bath_ratio = baths / bedrooms if baths and bedrooms and bedrooms > 0 else None
             
             values.append((
-                prop_id, listing_name or name, title, category,
+                prop_id, name, listing_name or name, title, category,
+                url, description,
                 guests, bedrooms, beds, baths, pets, is_fav,
                 size_tier, guest_ratio, bath_ratio
             ))
@@ -654,6 +659,7 @@ class DimensionalETL:
                 l.property_id,
                 l.host_id,
                 l.price_per_night,
+                l.currency,
                 l.rating,
                 l.number_of_reviews,
                 l.guests,
@@ -680,10 +686,10 @@ class DimensionalETL:
         insert_query = """
             INSERT INTO fact_listing_metrics (
                 property_id, host_key, property_key, location_key, rating_key,
-                date_key, price_per_night, listing_rating, number_of_reviews,
+                date_key, price_per_night, currency, listing_rating, number_of_reviews,
                 is_available, price_per_guest, price_per_bedroom, price_per_bed,
                 review_velocity, competitiveness_score, value_score, popularity_index,
-                snapshot_date
+                data_scraped_at, snapshot_date
             ) VALUES %s
             RETURNING listing_key, property_id
         """
@@ -692,7 +698,7 @@ class DimensionalETL:
         skipped = 0
         
         for listing in listings:
-            listing_id, prop_id, host_id, price, rating, reviews, \
+            listing_id, prop_id, host_id, price, currency, rating, reviews, \
             guests, bedrooms, beds, baths, avail, is_fav, lat, lon, timestamp = listing
             
             # Convert Decimal types to float for calculations
@@ -743,10 +749,10 @@ class DimensionalETL:
             
             values.append((
                 prop_id, host_key, property_key, location_key, rating_key,
-                date_key, price, rating, reviews, avail,
+                date_key, price, currency or 'CAD', rating, reviews, avail,
                 price_per_guest, price_per_bedroom, price_per_bed,
                 review_velocity, comp_score, value_score, popularity_index,
-                today.date()
+                timestamp, today.date()
             ))
         
         execute_values(self.target_cursor, insert_query, values)
