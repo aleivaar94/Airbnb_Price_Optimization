@@ -190,6 +190,37 @@ Needed to fix dim_property because it was missing the name column from listings 
 
 # Prompt: Creating Streamlit Dashboard with Competitor Matching and Price Optimization Strategy (Took Screenshot)
 
+You are a data scientist and data visualization expert. 
+First analyse and understand the modelled relational database structure, etl script that calcutes the top 25 competitors and optimal pricing.
+
+Propose two streamlit dashboard designs for a non-technical audience that clearly communicate or display the top 25 competitors and optimal pricing for a particular listing.
+
+The dasboard must contain:
+Three filters to be able to select the listing based on the url, property_id, listing_title, name (not listing_name)
+display table with top 25 competitors
+Visualization 1: Competitor Price Distribution from the notebook competitor_analysis_query
+Visualization 2: Only the Similarity Components (Average across Top 25) from the notebook competitor_nalaysis_query
+
+Suggest other data visualizations that help answer the question, how does my listing compare competitevily to my competitors? Follow best data visualization practices.
+
+Include the competitive analysis report by displaying the various findings using various streamlit components. 
+
+think step by step.
+
+#sequentialthinking 
+#context7 
+
+Start implementation of dashboard 1
+include competitive positioning radar chart
+competitivenes score gauge
+price vs rating scatter plott
+competitor feature heatmap
+geographic competitor map
+
+Use plotly for the visualizations
+
+
+
 # Notes
 
 ## Understanding "Reduce Redundancy"
