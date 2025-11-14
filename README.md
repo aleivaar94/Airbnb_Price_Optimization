@@ -242,3 +242,242 @@ Below three supposedly more important than price or location:
 "Amenities do matter". This is an article by Airbnb. People prefer functionality and comfort over connectivity. (https://news.airbnb.com/amenities-do-matter-airbnb-reveals-which-amenities-guests-search-for-most/)\
 
 After the deep research I fed the a sample of 25 listings to Claude and asked what variables would be important for developing a competitor matching algorithm and a price optimization algorithm.
+
+---
+
+# Implementation Guide
+
+## Project Architecture
+
+This project implements a complete data pipeline from raw web-scraped data to ML-ready dimensional model:
+
+```
+JSON Data → Normalized DB (3NF) → Dimensional DB (Star Schema) → ML Models
+   100       13 tables (airbnb_db)    9 tables (airbnb_dimensional)    Price Optimization
+listings                                                                Competitor Analysis
+```
+
+## Quick Start
+
+### 1. Initial Setup (One-Time)
+
+```bash
+# Install dependencies
+pip install psycopg2-binary python-dotenv scikit-learn numpy
+
+# Configure .env file with your PostgreSQL credentials
+DB_HOST=localhost
+DB_USER=postgres
+DB_PASSWORD=your_password
+SOURCE_DB_NAME=airbnb_db
+TARGET_DB_NAME=airbnb_dimensional
+```
+
+### 2. Load Initial Data
+
+```bash
+# Creates normalized database and loads 100 listings
+python etl_airbnb_normalized_postgres.py
+```
+
+### 3. Create Dimensional Model
+
+**Option A - Automated (Recommended):**
+```bash
+python setup_dimensional_db.py
+```
+
+**Option B - Manual:**
+```bash
+# Create dimensional database
+psql -U postgres -c "CREATE DATABASE airbnb_dimensional;"
+
+# Apply schema
+psql -U postgres -d airbnb_dimensional -f database_modelling_schema.sql
+
+# Populate date dimension
+psql -U postgres -d airbnb_dimensional -c "SELECT populate_dim_date('2024-01-01'::DATE, '2026-12-31'::DATE);"
+
+# Run ETL transformation
+python etl_normalized_to_dimensional.py
+```
+
+## Key Features
+
+### 1. Competitor Matching Algorithm
+
+Identifies top 25 most similar listings using **multi-dimensional similarity**:
+
+- **Location (35%)**: Geographic distance + cluster membership
+- **Property (25%)**: Bedrooms, beds, baths, capacity
+- **Quality (20%)**: Rating alignment
+- **Amenity (10%)**: Shared amenities
+- **Price (10%)**: Price range overlap
+
+**Query example:**
+```sql
+-- Get competitors for listing_key = 1
+SELECT * FROM view_top_competitors 
+WHERE listing_key = 1 
+ORDER BY similarity_rank;
+```
+
+### 2. Dynamic Price Optimization
+
+Analyzes competitor pricing and provides:
+- Weighted average price (by similarity)
+- Statistical benchmarks (median, percentiles)
+- Quality-adjusted recommendations
+- Pricing status (UNDERPRICED/OPTIMAL/OVERPRICED)
+
+**Query example:**
+```sql
+-- Get price recommendations
+SELECT 
+    property_id,
+    current_price,
+    recommended_optimal_price,
+    pricing_status
+FROM view_price_recommendations
+WHERE pricing_status = 'UNDERPRICED';
+```
+
+### 3. Pre-Computed Analytics
+
+**Calculated Metrics:**
+- `competitiveness_score` - Overall listing quality (0-100)
+- `value_score` - Quality vs price ratio
+- `amenity_score` - Quantified amenity value
+- `host_tier` - Elite/Premium/Standard classification
+- `property_size_tier` - Studio/Small/Medium/Large
+- `location_tier` - Urban Core to Suburban
+
+## File Structure
+
+| File | Purpose |
+|------|---------|
+| `database_normalized_schema.sql` | 3NF schema definition (13 tables) |
+| `database_modelling_schema.sql` | Star schema definition (9 tables) |
+| `etl_airbnb_normalized_postgres.py` | Loads JSON → Normalized DB |
+| `etl_normalized_to_dimensional.py` | Transforms Normalized → Dimensional |
+| `setup_dimensional_db.py` | Automated setup script |
+| `airbnb_listings_fetch.py` | BrightData API scraper |
+| `Documentation/README_ETL_GUIDE.md` | Complete setup guide |
+| `Documentation/README_DIMENSIONAL_MODEL.md` | Model documentation |
+
+## Database Schemas
+
+### Normalized Database (airbnb_db)
+
+**Purpose**: Source of truth, data integrity, transactional operations
+
+**Tables (13):**
+- Core: `hosts`, `listings`
+- Lookup: `amenity_groups`, `amenities`
+- Relationships: `listing_amenities`, `listing_category_ratings`, `listing_reviews`, `listing_highlights`, `listing_arrangement_details`, `listing_house_rules`, `listing_location_details`, `listing_description_sections`, `listing_cancellation_policies`
+
+### Dimensional Database (airbnb_dimensional)
+
+**Purpose**: Analytics, competitor analysis, price optimization, ML models
+
+**Dimensions (5):**
+- `dim_host` - Host quality and experience
+- `dim_property` - Property characteristics
+- `dim_location` - Geographic clustering
+- `dim_category_ratings` - Quality metrics
+- `dim_date` - Time intelligence
+
+**Facts (3):**
+- `fact_listing_metrics` - Central fact with performance metrics
+- `fact_listing_amenities_summary` - Aggregated amenity data
+- `fact_competitor_pricing_analysis` - Price recommendations
+
+**Bridge (1):**
+- `bridge_listing_competitors` - Top 25 competitors per listing
+
+## Usage Examples
+
+### Find Underpriced Listings
+
+```sql
+SELECT 
+    property_id,
+    listing_name,
+    current_price,
+    recommended_optimal_price,
+    (recommended_optimal_price - current_price) AS revenue_opportunity
+FROM view_price_recommendations
+WHERE pricing_status = 'UNDERPRICED'
+ORDER BY revenue_opportunity DESC
+LIMIT 10;
+```
+
+### Analyze by Host Tier
+
+```sql
+SELECT 
+    h.host_tier,
+    COUNT(*) AS listing_count,
+    AVG(f.price_per_night) AS avg_price,
+    AVG(f.listing_rating) AS avg_rating,
+    AVG(f.competitiveness_score) AS avg_competitiveness
+FROM fact_listing_metrics f
+JOIN dim_host h ON f.host_key = h.host_key
+GROUP BY h.host_tier
+ORDER BY avg_competitiveness DESC;
+```
+
+### Compare Properties by Location Cluster
+
+```sql
+SELECT 
+    l.location_cluster_id,
+    l.location_tier,
+    COUNT(*) AS properties,
+    AVG(f.price_per_night) AS avg_price,
+    AVG(f.listing_rating) AS avg_rating
+FROM fact_listing_metrics f
+JOIN dim_location l ON f.location_key = l.location_key
+GROUP BY l.location_cluster_id, l.location_tier
+ORDER BY avg_price DESC;
+```
+
+## Performance & Scalability
+
+| Dataset | ETL Time | Comparisons | Storage |
+|---------|----------|-------------|---------|
+| 100 listings | 2-5 min | 9,900 | ~5 MB |
+| 1K listings | 15-30 min | 999K | ~50 MB |
+| 10K listings | 3-5 hours | 100M | ~500 MB |
+
+## Documentation
+
+- **[README_ETL_GUIDE.md](Documentation/README_ETL_GUIDE.md)** - Complete setup instructions
+- **[README_DIMENSIONAL_MODEL.md](Documentation/README_DIMENSIONAL_MODEL.md)** - Schema details and formulas
+- **[README_DATABASE.md](Documentation/README_DATABASE.md)** - Normalized database guide
+- **[NORMALIZATION_SUMMARY.md](Documentation/NORMALIZATION_SUMMARY.md)** - Database design process
+
+## Technology Stack
+
+- **Database**: PostgreSQL 12+
+- **ETL**: Python 3.8+ with psycopg2, numpy, scikit-learn
+- **Clustering**: K-means algorithm for geographic grouping
+- **Distance**: Haversine formula for geo calculations
+- **Data Source**: BrightData API (web scraping)
+
+## Contributing
+
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Add tests if applicable
+4. Submit a pull request
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Contact
+
+- GitHub: [@aleivaar94](https://github.com/aleivaar94)
+- Project: [Airbnb_Price_Optimization](https://github.com/aleivaar94/Airbnb_Price_Optimization)
