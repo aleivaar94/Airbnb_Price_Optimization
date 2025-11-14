@@ -171,6 +171,27 @@ The table enables **hierarchical amenity analysis** critical for understanding w
 - Enables category-level aggregation
 - Flexible for adding new categories
 
+## Environment Variables
+
+The ETL pipeline uses the following environment variables (defined in `.env`):
+
+```bash
+# PostgreSQL Connection (Shared)
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_secure_password
+
+# Normalized Database (Source)
+SOURCE_DB_NAME=airbnb_db
+NORMALIZED_SCHEMA_FILE=database_normalized_schema.sql
+
+# Data Source
+JSON_FILE=Resources/airbnb_beltline_calgary_listings_100.json
+```
+
+**Note**: These variables are independent from the dimensional database variables (`TARGET_DB_NAME`, `DIMENSIONAL_SCHEMA_FILE`), allowing both databases to coexist.
+
 ## Files Created
 
 | File | Purpose |
@@ -341,9 +362,17 @@ With this schema, you can answer:
 To use this database:
 
 1. **Install PostgreSQL** (if not already installed)
-2. **Install Python dependencies**: `uv pip install psycopg2-binary`
+2. **Install Python dependencies**: `uv pip install psycopg2-binary python-dotenv`
 3. **Create database**: `CREATE DATABASE airbnb_db;`
-4. **Configure credentials** in `etl_airbnb_normalized_postgres.py`
+4. **Configure credentials** in `.env` file:
+   ```bash
+   DB_HOST=localhost
+   DB_USER=postgres
+   DB_PASSWORD=your_password
+   SOURCE_DB_NAME=airbnb_db
+   NORMALIZED_SCHEMA_FILE=database_normalized_schema.sql
+   JSON_FILE=Resources/airbnb_beltline_calgary_listings_100.json
+   ```
 5. **Run ETL**: `python etl_airbnb_normalized_postgres.py`
 6. **Test queries**: `python sample_queries.py`
 

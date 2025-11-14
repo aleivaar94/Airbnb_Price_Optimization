@@ -204,15 +204,16 @@ Airbnb_Price_Optimization/
    ```
 
 4. **Configure database connection**:
-   Edit `etl_airbnb_normalized_postgres.py` and update the `db_config` dictionary:
+   Create a `.env` file or edit `etl_airbnb_normalized_postgres.py`:
    ```python
-   db_config = {
-       'host': 'localhost',
-       'database': 'airbnb_db',
-       'user': 'your_username',
-       'password': 'your_password',
-       'port': 5432
-   }
+   # .env file
+   DB_HOST=localhost
+   SOURCE_DB_NAME=airbnb_db
+   DB_USER=your_username
+   DB_PASSWORD=your_password
+   DB_PORT=5432
+   NORMALIZED_SCHEMA_FILE=database_normalized_schema.sql
+   JSON_FILE=Resources/airbnb_beltline_calgary_listings_100.json
    ```
 
 ## Usage Guide
@@ -227,14 +228,18 @@ python etl_airbnb_normalized_postgres.py
 **Using the AirbnbETL class programmatically**:
 ```python
 from etl_airbnb_normalized_postgres import AirbnbETL
+import os
+from dotenv import load_dotenv
 
-# Configure database
+load_dotenv()
+
+# Configure database (reads from .env)
 db_config = {
-    'host': 'localhost',
-    'database': 'airbnb_db',
-    'user': 'postgres',
-    'password': 'password',
-    'port': 5432
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'database': os.getenv('SOURCE_DB_NAME', 'airbnb_db'),
+    'user': os.getenv('DB_USER', 'postgres'),
+    'password': os.getenv('DB_PASSWORD'),
+    'port': int(os.getenv('DB_PORT', '5432'))
 }
 
 # Initialize ETL
@@ -242,8 +247,8 @@ etl = AirbnbETL(db_config)
 
 # Run ETL with schema recreation
 etl.run_etl(
-    json_file='Resources/airbnb_beltline_calgary_listings_100.json',
-    schema_file='database_normalized_schema.sql',
+    json_file=os.getenv('JSON_FILE', 'Resources/airbnb_beltline_calgary_listings_100.json'),
+    schema_file=os.getenv('NORMALIZED_SCHEMA_FILE', 'database_normalized_schema.sql'),
     recreate_schema=True  # Set False to keep existing data
 )
 ```

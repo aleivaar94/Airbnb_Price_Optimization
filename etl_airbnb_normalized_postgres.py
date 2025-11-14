@@ -837,8 +837,8 @@ def main():
     ------------------------------
     DB_HOST : str, default='localhost'
         PostgreSQL host address
-    DB_NAME : str, default='airbnb_db'
-        Database name
+    SOURCE_DB_NAME : str, default='airbnb_db'
+        Database name (normalized database)
     DB_USER : str, default='postgres'
         Database user
     DB_PORT : int, default=5432
@@ -847,7 +847,7 @@ def main():
     Example .env File
     -----------------
     DB_HOST=localhost
-    DB_NAME=airbnb_db
+    SOURCE_DB_NAME=airbnb_db
     DB_USER=postgres
     DB_PASSWORD=your_secure_password
     DB_PORT=5432
@@ -855,7 +855,7 @@ def main():
     # Database configuration - loads from environment variables
     db_config = {
         'host': os.getenv('DB_HOST', 'localhost'),
-        'database': os.getenv('DB_NAME', 'airbnb_db'),
+        'database': os.getenv('SOURCE_DB_NAME', 'airbnb_db'),
         'user': os.getenv('DB_USER', 'postgres'),
         'password': os.getenv('DB_PASSWORD'),  # Loaded from .env file
         'port': int(os.getenv('DB_PORT', '5432'))
@@ -868,8 +868,8 @@ def main():
         raise ValueError("DB_PASSWORD environment variable is required")
     
     # File paths
-    json_file = 'Resources/airbnb_beltline_calgary_listings_100.json'
-    schema_file = 'database_normalized_schema.sql'
+    json_file = os.getenv('JSON_FILE', 'Resources/airbnb_beltline_calgary_listings_100.json')
+    schema_file = os.getenv('NORMALIZED_SCHEMA_FILE', 'database_normalized_schema.sql')
     
     # Run ETL
     etl = AirbnbETL(db_config)
