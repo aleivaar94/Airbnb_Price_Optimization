@@ -185,6 +185,11 @@ value
 
 think step by step
 
+
+Needed to fix dim_property because it was missing the name column from listings table.
+
+# Prompt: Creating Streamlit Dashboard with Competitor Matching and Price Optimization Strategy (Took Screenshot)
+
 # Notes
 
 ## Understanding "Reduce Redundancy"
