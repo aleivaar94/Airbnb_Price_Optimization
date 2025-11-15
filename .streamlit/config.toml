@@ -1,0 +1,9 @@
+[theme]
+# Set dark theme as default
+base = "dark"
+
+# Custom RankBreeze theme colors (optional - can customize later)
+primaryColor = "#8B5CF6"  # Purple accent
+backgroundColor = "#0E1117"  # Dark background
+secondaryBackgroundColor = "#262730"  # Slightly lighter dark
+textColor = "#FAFAFA"  # Light text
