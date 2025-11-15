@@ -122,11 +122,22 @@ url_to_id = {row['url'] if pd.notna(row['url']) else "N/A": row['property_id']
 
 # Initialize session state for filter synchronization
 if 'selected_property_id' not in st.session_state:
-    # Default to first property in the list
-    st.session_state.selected_property_id = property_ids[0]
-if 'selected_title' not in st.session_state:
+    # Default to specific property ID if it exists, otherwise first property
+    default_property_id = '1300059188064308611'
+    if default_property_id in property_ids:
+        st.session_state.selected_property_id = default_property_id
+        # Find matching row for title and URL
+        matching_row = properties_df[properties_df['property_id'] == default_property_id].iloc[0]
+        st.session_state.selected_title = matching_row['listing_title'] if pd.notna(matching_row['listing_title']) else "N/A"
+        st.session_state.selected_url = matching_row['url'] if pd.notna(matching_row['url']) else "N/A"
+    else:
+        # Fallback to first property in the list
+        st.session_state.selected_property_id = property_ids[0]
+        st.session_state.selected_title = titles[0]
+        st.session_state.selected_url = urls[0]
+elif 'selected_title' not in st.session_state:
     st.session_state.selected_title = titles[0]
-if 'selected_url' not in st.session_state:
+elif 'selected_url' not in st.session_state:
     st.session_state.selected_url = urls[0]
 
 # Callback functions for filter synchronization
