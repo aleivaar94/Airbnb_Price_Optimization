@@ -36,8 +36,7 @@ import dashboard_visualizations as viz
 
 # Page configuration
 st.set_page_config(
-    page_title="Airbnb Competitive Intelligence",
-    page_icon="🏠",
+    page_title="RankBreeze Competitive Intelligence",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -45,6 +44,12 @@ st.set_page_config(
 # Custom CSS for better styling
 st.markdown("""
 <style>
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
     .main-header {
         font-size: 2.5rem;
         font-weight: bold;
@@ -68,8 +73,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Title
-st.markdown('<h1 class="main-header">🏠 Airbnb Competitive Intelligence Dashboard</h1>', 
+# Logo and Title
+col1, col2, col3 = st.columns([1, 1, 1])
+with col2:
+    st.image("assets/images/RankBreeze-Logo-Purple.png", width=500)
+
+st.markdown('<h1 class="main-header">Competitive Intelligence Dashboard</h1>', 
             unsafe_allow_html=True)
 
 # ============================================================================
@@ -236,7 +245,7 @@ with tab1:
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.subheader(f"{property_data['listing_name']}")
+        st.subheader(f"{property_data['listing_title']}")
         st.write(f"**Category:** {property_data['category']}")
         st.write(f"**Location:** {property_data['city']}, {property_data['province']} ({property_data['location_tier']})")
         st.write(f"**Distance to Downtown:** {property_data['distance_to_downtown_km']:.2f} km")
@@ -300,6 +309,7 @@ with tab2:
             column_config={
                 "similarity_rank": st.column_config.NumberColumn("Rank", width="small"),
                 "competitor_property_id": st.column_config.TextColumn("Property ID", width="medium"),
+                "competitor_listing_title": st.column_config.TextColumn("Listing Title", width="large"),
                 "competitor_name": st.column_config.TextColumn("Listing Name", width="large"),
                 "overall_similarity_score": st.column_config.ProgressColumn(
                     "Similarity",
@@ -329,7 +339,7 @@ with tab2:
                 "competitor_bedrooms": "Beds"
             },
             hide_index=True,
-            use_container_width=True,
+            width='stretch',
             height=400
         )
         
@@ -339,10 +349,9 @@ with tab2:
         st.subheader("📈 Competitive Insights")
         
         # Row 1: Price Distribution & Similarity Components
-        col1, col2 = st.columns([3, 2])
+        col1, col2 = st.columns([3, 2], gap="large")
         
         with col1:
-            st.markdown("**Price Distribution Analysis** (Required)")
             optimal_price = None
             lower_bound = None
             upper_bound = None
@@ -359,55 +368,38 @@ with tab2:
                 lower_bound,
                 upper_bound
             )
-            st.plotly_chart(fig_price_dist, use_container_width=True)
+            st.plotly_chart(fig_price_dist, width='stretch')
         
         with col2:
-            st.markdown("**Similarity Components** (Required)")
             fig_similarity = viz.create_similarity_bar_chart(competitors_df)
-            st.plotly_chart(fig_similarity, use_container_width=True)
+            st.plotly_chart(fig_similarity, width='stretch')
+        
+        # Add vertical spacing
+        st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
         
         st.divider()
         
-        # Row 2: Radar Chart & Heatmap
-        col1, col2 = st.columns(2)
+        # Competitive Positioning Radar
+        # Calculate property scores (normalized to 0-100)
+        your_scores = [
+            competitors_df['location_similarity'].mean(),  # Use avg similarity as proxy
+            80,  # Property match (simplified)
+            (property_data['overall_quality_score'] / 5.0) * 100,
+            (property_data['amenity_score'] / 100) * 100,
+            100 - abs(pricing_df['price_premium_discount'].iloc[0]) if not pricing_df.empty else 80
+        ]
         
-        with col1:
-            st.markdown("**Competitive Positioning Radar**")
-            
-            # Calculate property scores (normalized to 0-100)
-            your_scores = [
-                competitors_df['location_similarity'].mean(),  # Use avg similarity as proxy
-                80,  # Property match (simplified)
-                (property_data['overall_quality_score'] / 5.0) * 100,
-                (property_data['amenity_score'] / 100) * 100,
-                100 - abs(pricing_df['price_premium_discount'].iloc[0]) if not pricing_df.empty else 80
-            ]
-            
-            # Competitor average scores
-            comp_scores = [
-                competitors_df['location_similarity'].mean(),
-                competitors_df['property_similarity'].mean(),
-                competitors_df['quality_similarity'].mean(),
-                competitors_df['amenity_similarity'].mean(),
-                competitors_df['price_similarity'].mean()
-            ]
-            
-            fig_radar = viz.create_radar_chart(your_scores, comp_scores)
-            st.plotly_chart(fig_radar, use_container_width=True)
+        # Competitor average scores
+        comp_scores = [
+            competitors_df['location_similarity'].mean(),
+            competitors_df['property_similarity'].mean(),
+            competitors_df['quality_similarity'].mean(),
+            competitors_df['amenity_similarity'].mean(),
+            competitors_df['price_similarity'].mean()
+        ]
         
-        with col2:
-            st.markdown("**Feature Comparison Matrix**")
-            
-            # Add amenity_score to competitors if not present
-            if 'amenity_score' not in competitors_df.columns:
-                competitors_df['amenity_score'] = 50  # Default value
-            
-            fig_heatmap = viz.create_competitor_heatmap(
-                property_data,
-                competitors_df,
-                top_n=10
-            )
-            st.plotly_chart(fig_heatmap, use_container_width=True)
+        fig_radar = viz.create_radar_chart(your_scores, comp_scores)
+        st.plotly_chart(fig_radar, width='stretch')
 
 # ============================================================================
 # TAB 3: PRICING
@@ -465,7 +457,7 @@ with tab3:
         with col1:
             st.markdown("**Competitiveness Score Gauge**")
             fig_gauge = viz.create_gauge_chart(property_data['competitiveness_score'])
-            st.plotly_chart(fig_gauge, use_container_width=True)
+            st.plotly_chart(fig_gauge, width='stretch')
         
         with col2:
             st.markdown("**Price vs Rating Positioning**")
@@ -473,9 +465,9 @@ with tab3:
                 fig_scatter = viz.create_price_rating_scatter(
                     property_data,
                     competitors_df,
-                    pricing_data['recommended_optimal_price']
+                    pricing_data['recommended_optimal_price'] if not pricing_df.empty else None
                 )
-                st.plotly_chart(fig_scatter, use_container_width=True)
+                st.plotly_chart(fig_scatter, width='stretch')
         
         # Geographic Map
         if not competitors_df.empty:
@@ -487,7 +479,7 @@ with tab3:
             if 'latitude' in property_data and 'longitude' in property_data:
                 fig_map = viz.create_competitor_map(property_data, competitors_df)
                 if fig_map.data:  # Check if map was created successfully
-                    st.plotly_chart(fig_map, use_container_width=True)
+                    st.plotly_chart(fig_map, width='stretch')
                 else:
                     st.info("Geographic data not available for map visualization")
 
@@ -594,4 +586,4 @@ with tab4:
 
 st.divider()
 st.caption("Dashboard powered by Streamlit | Data from Airbnb Dimensional Database")
-st.caption("For support, contact: data-team@example.com")
+st.caption("For support, contact: alejandro@rankbreeze.com")
