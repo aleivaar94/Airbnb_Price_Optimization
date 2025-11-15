@@ -109,42 +109,115 @@ if properties_df.empty:
     st.error("No properties found in database. Please run the ETL process first.")
     st.stop()
 
+# Prepare filter options
+property_ids = properties_df['property_id'].tolist()
+titles = properties_df['listing_title'].fillna("N/A").tolist()
+urls = properties_df['url'].fillna("N/A").tolist()
+
+# Create mapping dictionaries for quick lookups
+title_to_id = {row['listing_title'] if pd.notna(row['listing_title']) else "N/A": row['property_id'] 
+               for _, row in properties_df.iterrows()}
+url_to_id = {row['url'] if pd.notna(row['url']) else "N/A": row['property_id'] 
+             for _, row in properties_df.iterrows()}
+
+# Initialize session state for filter synchronization
+if 'selected_property_id' not in st.session_state:
+    # Default to first property in the list
+    st.session_state.selected_property_id = property_ids[0]
+if 'selected_title' not in st.session_state:
+    st.session_state.selected_title = titles[0]
+if 'selected_url' not in st.session_state:
+    st.session_state.selected_url = urls[0]
+
+# Callback functions for filter synchronization
+def sync_from_property_id():
+    """Update title and URL when property ID changes."""
+    prop_id = st.session_state.filter_property_id
+    st.session_state.selected_property_id = prop_id
+    # Find matching row and update other filters
+    matching_row = properties_df[properties_df['property_id'] == prop_id].iloc[0]
+    new_title = matching_row['listing_title'] if pd.notna(matching_row['listing_title']) else "N/A"
+    new_url = matching_row['url'] if pd.notna(matching_row['url']) else "N/A"
+    
+    st.session_state.selected_title = new_title
+    st.session_state.selected_url = new_url
+    # Update widget keys to sync the selectboxes
+    st.session_state.filter_title = new_title
+    st.session_state.filter_url = new_url
+
+def sync_from_title():
+    """Update property ID and URL when title changes."""
+    title = st.session_state.filter_title
+    st.session_state.selected_title = title
+    if title in title_to_id:
+        prop_id = title_to_id[title]
+        st.session_state.selected_property_id = prop_id
+        # Find matching row and update URL
+        matching_row = properties_df[properties_df['property_id'] == prop_id].iloc[0]
+        new_url = matching_row['url'] if pd.notna(matching_row['url']) else "N/A"
+        
+        st.session_state.selected_url = new_url
+        # Update widget keys to sync the selectboxes
+        st.session_state.filter_property_id = prop_id
+        st.session_state.filter_url = new_url
+
+def sync_from_url():
+    """Update property ID and title when URL changes."""
+    url = st.session_state.filter_url
+    st.session_state.selected_url = url
+    if url in url_to_id:
+        prop_id = url_to_id[url]
+        st.session_state.selected_property_id = prop_id
+        # Find matching row and update title
+        matching_row = properties_df[properties_df['property_id'] == prop_id].iloc[0]
+        new_title = matching_row['listing_title'] if pd.notna(matching_row['listing_title']) else "N/A"
+        
+        st.session_state.selected_title = new_title
+        # Update widget keys to sync the selectboxes
+        st.session_state.filter_property_id = prop_id
+        st.session_state.filter_title = new_title
+
 # Create filters in three columns
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    # Property ID filter
-    property_ids = properties_df['property_id'].tolist()
-    selected_property_id = st.selectbox(
+    # Property ID filter (interactive)
+    st.selectbox(
         "Property ID",
         options=property_ids,
+        index=property_ids.index(st.session_state.selected_property_id) if st.session_state.selected_property_id in property_ids else 0,
         format_func=lambda x: f"ID: {x}",
+        key="filter_property_id",
+        on_change=sync_from_property_id,
         help="Select property by unique identifier"
     )
 
-# Update other filters based on selected property_id
-selected_property = properties_df[properties_df['property_id'] == selected_property_id].iloc[0]
-
 with col2:
-    # Listing Title (display only, synced with property_id)
-    st.text_input(
+    # Listing Title filter (interactive)
+    st.selectbox(
         "Listing Title",
-        value=selected_property['listing_title'] if pd.notna(selected_property['listing_title']) else "N/A",
-        disabled=True,
-        help="Listing title from selected property"
+        options=titles,
+        index=titles.index(st.session_state.selected_title) if st.session_state.selected_title in titles else 0,
+        key="filter_title",
+        on_change=sync_from_title,
+        help="Select property by listing title"
     )
 
 with col3:
-    # URL (display only, synced with property_id)
-    url_display = selected_property['url'] if pd.notna(selected_property['url']) else "N/A"
-    if url_display != "N/A":
-        url_display = url_display.split('/')[-1]  # Show only listing ID part
-    st.text_input(
+    # URL filter (interactive, showing full URL)
+    st.selectbox(
         "Property URL",
-        value=url_display,
-        disabled=True,
-        help="Airbnb listing URL"
+        options=urls,
+        index=urls.index(st.session_state.selected_url) if st.session_state.selected_url in urls else 0,
+        format_func=lambda x: x if len(x) <= 50 else f"{x[:47]}...",
+        key="filter_url",
+        on_change=sync_from_url,
+        help="Select property by Airbnb URL (full URL shown in dropdown)"
     )
+
+# Get selected property data
+selected_property_id = st.session_state.selected_property_id
+selected_property = properties_df[properties_df['property_id'] == selected_property_id].iloc[0]
 
 st.divider()
 
