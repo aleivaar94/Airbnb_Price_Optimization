@@ -1,22 +1,24 @@
 """
 Export PostgreSQL database to a single SQL file.
 
-This script creates a complete backup of the airbnb_db database that can be
-shared and restored on any PostgreSQL server.
+This script creates a complete backup of either the normalized or dimensional
+Airbnb database that can be shared and restored on any PostgreSQL server.
 
 Parameters
 ----------
-None (uses environment variables from .env)
+--database : str, optional
+    Which database to export: 'normalized', 'dimensional', or 'both'
+    Default: 'normalized'
 
 Returns
 -------
 None
-    Creates a .sql file in the project directory
+    Creates .sql file(s) in the project directory
 
 External Files
 --------------
 Input: .env file with database credentials
-Output: airbnb_db_backup_YYYYMMDD_HHMMSS.sql
+Output: airbnb_db_normalized_YYYYMMDD.sql and/or airbnb_db_dimensional_YYYYMMDD.sql
 
 Environment Variables
 ---------------------
@@ -24,22 +26,36 @@ DB_HOST : str
     PostgreSQL server hostname (default: localhost)
 DB_PORT : str
     PostgreSQL server port (default: 5432)
-DB_NAME : str
-    Database name to export (default: airbnb_db)
+SOURCE_DB_NAME : str
+    Normalized database name (default: airbnb_db)
+TARGET_DB_NAME : str
+    Dimensional database name (default: airbnb_dimensional)
 DB_USER : str
     PostgreSQL username (default: postgres)
 DB_PASSWORD : str
     PostgreSQL password (required)
+
+Usage Examples
+--------------
+Export normalized database:
+    python export_database.py --database normalized
+
+Export dimensional database:
+    python export_database.py --database dimensional
+
+Export both databases:
+    python export_database.py --database both
 """
 
 import subprocess
 import os
+import argparse
 from datetime import datetime
 from dotenv import load_dotenv
 from pathlib import Path
 
 
-def export_database_to_sql():
+def export_database_to_sql(db_name, db_type):
     """
     Export PostgreSQL database using pg_dump utility.
     
@@ -51,11 +67,18 @@ def export_database_to_sql():
     The output is a single SQL file that can be executed to recreate
     the entire database.
     
+    Parameters
+    ----------
+    db_name : str
+        Name of the database to export
+    db_type : str
+        Type of database: 'normalized' or 'dimensional'
+    
     Workflow
     --------
     1. Load database credentials from .env file
     2. Use hardcoded path to pg_dump executable
-    3. Create timestamped backup filename
+    3. Create timestamped backup filename based on db_type
     4. Execute pg_dump command with credentials
     5. Verify backup file was created and report size
     
@@ -75,9 +98,9 @@ def export_database_to_sql():
     
     Examples
     --------
-    >>> backup_file = export_database_to_sql()
+    >>> backup_file = export_database_to_sql('airbnb_db', 'normalized')
     >>> print(f"Database exported to: {backup_file}")
-    Database exported to: airbnb_db_backup_20251111_143022.sql
+    Database exported to: airbnb_db_normalized_20251115.sql
     
     Notes
     -----
@@ -96,7 +119,6 @@ def export_database_to_sql():
     # Get database credentials from environment
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = os.getenv("DB_PORT", "5432")
-    db_name = os.getenv("DB_NAME", "airbnb_db")
     db_user = os.getenv("DB_USER", "postgres")
     db_password = os.getenv("DB_PASSWORD")
     
@@ -116,11 +138,11 @@ def export_database_to_sql():
             "3. Or update the pg_dump_path variable in this script"
         )
     
-    # Create timestamped filename
+    # Create timestamped filename based on database type
     timestamp = datetime.now().strftime("%Y%m%d")
-    backup_file = f"airbnb_db_backup_{timestamp}.sql"
+    backup_file = f"airbnb_db_{db_type}_{timestamp}.sql"
     
-    print(f"🔄 Exporting database '{db_name}' to {backup_file}...")
+    print(f"🔄 Exporting {db_type} database '{db_name}' to {backup_file}...")
     print(f"   Using: {pg_dump_path}")
     
     # Set password environment variable for pg_dump
@@ -172,9 +194,75 @@ def export_database_to_sql():
         raise
 
 
+def parse_arguments():
+    """
+    Parse command-line arguments.
+    
+    Returns
+    -------
+    argparse.Namespace
+        Parsed arguments with 'database' attribute
+    """
+    parser = argparse.ArgumentParser(
+        description='Export Airbnb PostgreSQL databases to SQL backup files',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python export_database.py --database normalized
+  python export_database.py --database dimensional
+  python export_database.py --database both
+        """
+    )
+    
+    parser.add_argument(
+        '--database',
+        choices=['normalized', 'dimensional', 'both'],
+        default='normalized',
+        help='Which database to export (default: normalized)'
+    )
+    
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
     try:
-        backup_file = export_database_to_sql()
+        # Parse command-line arguments
+        args = parse_arguments()
+        
+        # Load environment variables
+        load_dotenv()
+        
+        # Get database names from environment
+        normalized_db = os.getenv("SOURCE_DB_NAME", "airbnb_db")
+        dimensional_db = os.getenv("TARGET_DB_NAME", "airbnb_dimensional")
+        
+        backup_files = []
+        
+        # Export based on user selection
+        if args.database in ['normalized', 'both']:
+            print(f"\n{'='*60}")
+            print("EXPORTING NORMALIZED DATABASE")
+            print(f"{'='*60}")
+            backup_file = export_database_to_sql(normalized_db, 'normalized')
+            backup_files.append(backup_file)
+        
+        if args.database in ['dimensional', 'both']:
+            if args.database == 'both':
+                print()  # Add spacing between exports
+            print(f"\n{'='*60}")
+            print("EXPORTING DIMENSIONAL DATABASE")
+            print(f"{'='*60}")
+            backup_file = export_database_to_sql(dimensional_db, 'dimensional')
+            backup_files.append(backup_file)
+        
+        # Summary
+        print(f"\n{'='*60}")
+        print("EXPORT SUMMARY")
+        print(f"{'='*60}")
+        print(f"✅ Successfully exported {len(backup_files)} database(s):")
+        for bf in backup_files:
+            file_size = Path(bf).stat().st_size / (1024 * 1024)
+            print(f"   📁 {bf} ({file_size:.2f} MB)")
         
     except Exception as e:
         print(f"\n❌ Export failed: {e}")
