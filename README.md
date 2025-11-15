@@ -196,7 +196,7 @@ First analyse and understand the modelled relational database structure, etl scr
 Propose two streamlit dashboard designs for a non-technical audience that clearly communicate or display the top 25 competitors and optimal pricing for a particular listing.
 
 The dasboard must contain:
-Three filters to be able to select the listing based on the url, property_id, listing_title, name (not listing_name)
+Three filters to be able to select the listing based on the url, property_id, listing_title, name (not listing_name). The filters must work independently. Show the full URL.
 display table with top 25 competitors
 Visualization 1: Competitor Price Distribution from the notebook competitor_analysis_query
 Visualization 2: Only the Similarity Components (Average across Top 25) from the notebook competitor_nalaysis_query
