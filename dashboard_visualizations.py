@@ -144,7 +144,7 @@ def create_price_distribution_histogram(
         title="Competitor Price Distribution Analysis",
         xaxis_title="Price per Night (CAD)",
         yaxis_title="Number of Competitors",
-        showlegend=True,
+        showlegend=False,
         height=400,
         hovermode='x unified',
         template='plotly_white'
@@ -211,7 +211,7 @@ def create_similarity_bar_chart(competitors_df: pd.DataFrame) -> go.Figure:
         marker_color=colors,
         text=[f"{v:.1f}" for v in components.values()],
         textposition='outside',
-        textfont=dict(size=14, color='black'),
+        textfont=dict(size=14, color='white'),
         hovertemplate='<b>%{x}</b><br>Score: %{y:.1f}<extra></extra>'
     ))
     
@@ -219,7 +219,7 @@ def create_similarity_bar_chart(competitors_df: pd.DataFrame) -> go.Figure:
         title="Similarity Components (Average Across Top 25)",
         yaxis_title="Average Similarity Score",
         xaxis_title="Component",
-        yaxis_range=[0, 100],
+        yaxis_range=[0, 110],
         showlegend=False,
         height=400,
         hovermode='x',
@@ -298,16 +298,23 @@ def create_radar_chart(
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[0, 100],
+                range=[0, 110],
                 tickmode='linear',
                 tick0=0,
-                dtick=20
+                dtick=20,
+                tickfont=dict(color='black'),
+                gridcolor='lightgray'
+            ),
+            angularaxis=dict(
+                tickfont=dict(color='white', size=12)
             )
         ),
         showlegend=True,
         title="Competitive Position Across 5 Dimensions",
-        height=400,
-        template='plotly_white'
+        height=500,
+        template='plotly_white',
+        font=dict(color='black'),
+        # margin=dict(l=100, r=100, t=100, b=100)
     )
     
     return fig
@@ -608,8 +615,16 @@ def create_competitor_heatmap(
         template='plotly_white'
     )
     
-    # Highlight your listing row
-    fig.update_yaxes(tickfont=dict(color=['red'] + ['black'] * top_n))
+    # Add annotation to highlight your listing
+    fig.add_annotation(
+        text="⭐",
+        x=-0.15,
+        y=0,
+        xref="x domain",
+        yref="y",
+        showarrow=False,
+        font=dict(size=16, color='red')
+    )
     
     return fig
 
@@ -664,11 +679,18 @@ def create_competitor_map(
     # Prepare competitor data
     map_df = competitors_df.copy()
     
-    # Ensure required columns exist
-    if 'latitude' not in map_df.columns:
-        # Try to get from location if available
-        st.warning("Geographic coordinates not available for map visualization")
-        return go.Figure()
+    # Ensure required columns exist - return empty figure if no coordinates
+    if 'latitude' not in map_df.columns and 'competitor_latitude' not in map_df.columns:
+        # Return empty figure with message
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Geographic coordinates not available for map visualization",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(size=14, color="gray")
+        )
+        fig.update_layout(height=500)
+        return fig
     
     # Add your property
     your_location = pd.DataFrame([{
