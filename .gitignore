@@ -2,3 +2,5 @@
 __pycache__/
 .env
 Resources/Ale*
+*.sql
+.streamlit/secrets.toml
