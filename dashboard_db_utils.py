@@ -52,22 +52,21 @@ def create_connection() -> Optional[psycopg2.extensions.connection]:
     """
     Create and return a PostgreSQL database connection.
     
-    Uses environment variables for connection parameters. Connection is
-    configured for the dimensional database (airbnb_dimensional).
+    Supports both Streamlit Cloud (secrets.toml) and local development (.env).
     
     Returns
     -------
     psycopg2.connection or None
         Database connection object if successful, None otherwise
     
-    Environment Variables
-    --------------------
+    Environment Variables / Secrets
+    -------------------------------
     DB_HOST : str
-        Database host (default: localhost)
+        Database host (Supabase: db.xxxx.supabase.co)
     DB_PORT : int
         Database port (default: 5432)
     TARGET_DB_NAME : str
-        Database name (default: airbnb_dimensional)
+        Database name (Supabase: postgres)
     DB_USER : str
         Database user (default: postgres)
     DB_PASSWORD : str
@@ -81,10 +80,23 @@ def create_connection() -> Optional[psycopg2.extensions.connection]:
     
     Notes
     -----
-    This function uses the TARGET_DB_NAME environment variable to connect
-    to the dimensional database, not the normalized source database.
+    Priority order:
+    1. Streamlit secrets (for cloud deployment)
+    2. Environment variables (for local development)
     """
     try:
+        # Try Streamlit secrets first (for Streamlit Cloud deployment)
+        if hasattr(st, 'secrets') and 'DB_HOST' in st.secrets:
+            conn = psycopg2.connect(
+                host=st.secrets["DB_HOST"],
+                port=st.secrets.get("DB_PORT", "5432"),
+                database=st.secrets["TARGET_DB_NAME"],
+                user=st.secrets.get("DB_USER", "postgres"),
+                password=st.secrets["DB_PASSWORD"]
+            )
+            return conn
+        
+        # Fallback to environment variables (for local development)
         conn = psycopg2.connect(
             host=os.getenv('DB_HOST', 'localhost'),
             port=os.getenv('DB_PORT', '5432'),
@@ -93,6 +105,7 @@ def create_connection() -> Optional[psycopg2.extensions.connection]:
             password=os.getenv('DB_PASSWORD')
         )
         return conn
+        
     except psycopg2.Error as e:
         st.error(f"Database connection failed: {e}")
         return None
